@@ -48,10 +48,26 @@ To run the unit tests:
 npm test
 ```
 
-To build the production bundle (output in `dist/`):
+### Production Build
+
+To build the project locally:
 
 ```bash
+# install dependencies from the lockfile (reproducible install)
+npm ci
+# or: npm install
+
+# build the production bundle (output in dist/)
 npm run build
+
+# serve the built bundle locally, e.g.
+python -m http.server -d dist
+```
+
+You can also preview the production build with Vite's built-in server:
+
+```bash
+npm run preview
 ```
 
 ## Contributing
