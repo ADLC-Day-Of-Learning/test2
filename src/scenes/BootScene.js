@@ -9,10 +9,13 @@ import {
   ROUND_SECONDS,
   SCENE_BOOT,
   SCENE_GAME,
-  DIMMER_DEPTH,
-  TEXT_DEPTH,
+  DEPTH_TEXT,
 } from '../game/constants.js';
-import { isGameFocused } from '../game/a11y.js';
+import {
+  createOverlayDimmer,
+  createBlinkingPrompt,
+  wireConfirmControls,
+} from './overlay.js';
 
 const FLAG_COLORS = [0xff5f6d, 0xffc371, 0x8093f1, 0x7ee8fa, 0xb4ffd2];
 
@@ -35,17 +38,13 @@ export default class BootScene extends Phaser.Scene {
   /**
    * Visible start screen shown before the first round begins, so
    * sighted players see the rules, scoring, and both control schemes
-   * instead of only the sr-only description in index.html. The round
-   * starts on pointer input, or via the keyboard like the game-over
-   * screen: `on` (not `once`) plus the startTriggered guard, with the
-   * handler gated on canvas focus.
+   * instead of only the sr-only description in index.html. The dimmer,
+   * blinking prompt, and the pointer/keyboard confirm wiring come from
+   * the shared overlay scaffolding in ./overlay.js.
    */
   createStartScreen() {
-    this.startTriggered = false;
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'background');
-    this.add
-      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.45)
-      .setDepth(DIMMER_DEPTH);
+    createOverlayDimmer(this, 0.45);
 
     this.add
       .text(GAME_WIDTH / 2, 130, 'Whack-a-mole', {
@@ -54,7 +53,7 @@ export default class BootScene extends Phaser.Scene {
         color: '#ffffff',
       })
       .setOrigin(0.5)
-      .setDepth(TEXT_DEPTH);
+      .setDepth(DEPTH_TEXT);
 
     const body = { fontFamily: 'Arial', fontSize: '26px', color: '#ffffff' };
     const lines = [
@@ -67,40 +66,19 @@ export default class BootScene extends Phaser.Scene {
       this.add
         .text(GAME_WIDTH / 2, 225 + index * 44, line, body)
         .setOrigin(0.5)
-        .setDepth(TEXT_DEPTH);
+        .setDepth(DEPTH_TEXT);
     });
 
     const prompt = this.add
-      .text(GAME_WIDTH / 2, 480, 'Click, tap, or press Enter to start', {
+      .text(GAME_WIDTH / 2, 480, 'Click, tap, or press Enter or Space to start', {
         ...body,
         color: '#ffe066',
       })
       .setOrigin(0.5)
-      .setDepth(TEXT_DEPTH);
-    this.tweens.add({
-      targets: prompt,
-      alpha: 0.35,
-      duration: 700,
-      yoyo: true,
-      repeat: -1,
-    });
+      .setDepth(DEPTH_TEXT);
+    createBlinkingPrompt(this, prompt);
 
-    this.input.once('pointerdown', () => this.startGame());
-    const startOnKey = () => {
-      if (isGameFocused()) {
-        this.startGame();
-      }
-    };
-    this.input.keyboard.on('keydown-ENTER', startOnKey);
-    this.input.keyboard.on('keydown-SPACE', startOnKey);
-  }
-
-  startGame() {
-    if (this.startTriggered) {
-      return;
-    }
-    this.startTriggered = true;
-    this.scene.start(SCENE_GAME);
+    wireConfirmControls(this, () => this.scene.start(SCENE_GAME));
   }
 
   createBackgroundTexture() {

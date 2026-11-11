@@ -32,3 +32,14 @@ export function countdownAnnouncement(remaining) {
     message: `${remaining} seconds remaining`,
   };
 }
+
+/**
+ * Whether `remaining` seconds is a milestone that has not been
+ * announced yet, given the second that was announced last. The
+ * update loop ticks faster than once per second, so without this
+ * dedup guard the same milestone would be announced on every frame
+ * of its second. Kept pure so the guard is unit-testable.
+ */
+export function shouldAnnounceMilestone(remaining, lastAnnounced) {
+  return countdownAnnouncement(remaining) !== null && remaining !== lastAnnounced;
+}

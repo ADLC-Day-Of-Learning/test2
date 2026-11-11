@@ -11,10 +11,22 @@ import {
   MOLE_HEIGHT,
   SCENE_GAME,
   SCENE_GAME_OVER,
+  DEPTH_PER_ROW,
+  DEPTH_HIGHLIGHT,
+  DEPTH_HUD,
+  DEPTH_POPUP,
 } from '../game/constants.js';
 import { moleUpTime, spawnInterval } from '../game/difficulty.js';
 import { whackOutcome, isPointOnEmergedMole } from '../game/whack.js';
-import { countdownAnnouncement } from '../game/countdown.js';
+import { countdownAnnouncement, shouldAnnounceMilestone } from '../game/countdown.js';
+import {
+  initialHoleState,
+  onMoleSpawned,
+  onMoleWhacked,
+  onMoleLowered,
+  shouldLowerAfterUpTime,
+} from '../game/holeState.js';
+import { nextSelectedHole } from '../game/selection.js';
 import {
   announceStatus,
   announceWarning,
@@ -28,13 +40,6 @@ const PLAYFIELD_BOTTOM = 545;
 
 // How far a mole's bottom sits below the hole centre line when up.
 const MOLE_UP_OFFSET = 22;
-
-// Depth layers. Each row of holes gets its own block of depths so that
-// lower rows (and their covers) always draw above the rows behind them.
-const DEPTH_PER_ROW = 10;
-const DEPTH_HIGHLIGHT = 30;
-const DEPTH_HUD = 40;
-const DEPTH_POPUP = 50;
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -129,7 +134,7 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setDepth(depth + 4);
 
-    const hole = { x, y, mole, busy: false, whacked: false };
+    const hole = { x, y, mole, state: initialHoleState() };
     mole.on('pointerdown', () => this.whack(hole));
     return hole;
   }
@@ -212,14 +217,20 @@ export default class GameScene extends Phaser.Scene {
     if (this.roundOver || !isGameFocused()) {
       return;
     }
-    const row = Math.floor(this.selectedHole / GRID_COLS);
-    const col = this.selectedHole % GRID_COLS;
-    const newRow = Phaser.Math.Clamp(row + dy, 0, GRID_ROWS - 1);
-    const newCol = Phaser.Math.Clamp(col + dx, 0, GRID_COLS - 1);
-    const newIndex = newRow * GRID_COLS + newCol;
+    // The clamping lives in the pure nextSelectedHole helper so it is
+    // unit-tested; the scene only dispatches on its result.
+    const newIndex = nextSelectedHole(
+      this.selectedHole,
+      dx,
+      dy,
+      GRID_ROWS,
+      GRID_COLS,
+    );
     if (newIndex !== this.selectedHole) {
       this.selectedHole = newIndex;
       this.updateSelectionHighlight();
+      const newRow = Math.floor(newIndex / GRID_COLS);
+      const newCol = newIndex % GRID_COLS;
       announceStatus(`Hole ${newRow + 1}-${newCol + 1} selected`);
     }
   }
@@ -232,13 +243,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   trySpawnMole() {
-    const free = this.holes.filter((hole) => !hole.busy);
+    const free = this.holes.filter((hole) => !hole.state.busy);
     if (free.length === 0) {
       return;
     }
     const hole = Phaser.Utils.Array.GetRandom(free);
-    hole.busy = true;
-    hole.whacked = false;
+    hole.state = onMoleSpawned(hole.state);
 
     this.tweens.add({
       targets: hole.mole,
@@ -247,7 +257,7 @@ export default class GameScene extends Phaser.Scene {
       ease: 'Back.easeOut',
       onComplete: () => {
         this.time.delayedCall(moleUpTime(this.elapsedMs), () => {
-          if (!hole.whacked) {
+          if (shouldLowerAfterUpTime(hole.state)) {
             this.lowerMole(hole);
           }
         });
@@ -262,7 +272,7 @@ export default class GameScene extends Phaser.Scene {
       duration: 160,
       ease: 'Quad.easeIn',
       onComplete: () => {
-        hole.busy = false;
+        hole.state = onMoleLowered(hole.state);
       },
     });
   }
@@ -274,8 +284,8 @@ export default class GameScene extends Phaser.Scene {
     // dispatches on its result.
     const outcome = whackOutcome({
       roundOver: this.roundOver,
-      busy: hole.busy,
-      whacked: hole.whacked,
+      busy: hole.state.busy,
+      whacked: hole.state.whacked,
       moleY: hole.mole.y,
       holeY: hole.y,
     });
@@ -283,15 +293,18 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
     if (outcome === 'miss') {
-      this.showMiss(hole);
+      // The visual marker and the announcement use the same word so
+      // sighted and non-visual users get identical feedback.
+      announceStatus('Missed');
+      this.showPopup(hole, 'Missed', '#b8b8b8');
       return;
     }
 
-    hole.whacked = true;
+    hole.state = onMoleWhacked(hole.state);
     this.score += 1;
     this.scoreText.setText(`Score: ${this.score}`);
     announceStatus(`Score: ${this.score}`);
-    this.showHitPopup(hole);
+    this.showPopup(hole, '+1', '#ffe066');
 
     // Squash-and-flash. An alpha dip is used instead of a tint fill so the
     // effect also works with the Canvas renderer.
@@ -316,36 +329,16 @@ export default class GameScene extends Phaser.Scene {
   // announcement plus a brief visual marker, so keyboard and
   // screen-reader users can tell a miss apart from an unresponsive
   // game (WCAG 4.1.3).
-  showMiss(hole) {
-    // The visual marker and the announcement use the same word so
-    // sighted and non-visual users get identical feedback.
-    announceStatus('Missed');
+  //
+  // The same floating popup serves both outcomes — the gray 'Missed'
+  // marker and the golden '+1' — so the animation and teardown logic
+  // exists only once.
+  showPopup(hole, label, color) {
     const popup = this.add
-      .text(hole.x, hole.y - 100, 'Missed', {
+      .text(hole.x, hole.y - 100, label, {
         fontFamily: 'Arial',
         fontSize: '32px',
-        color: '#b8b8b8',
-        stroke: '#000000',
-        strokeThickness: 5,
-      })
-      .setOrigin(0.5)
-      .setDepth(DEPTH_POPUP);
-    this.tweens.add({
-      targets: popup,
-      y: popup.y - 45,
-      alpha: 0,
-      duration: 500,
-      ease: 'Quad.easeOut',
-      onComplete: () => popup.destroy(),
-    });
-  }
-
-  showHitPopup(hole) {
-    const popup = this.add
-      .text(hole.x, hole.y - 100, '+1', {
-        fontFamily: 'Arial',
-        fontSize: '32px',
-        color: '#ffe066',
+        color,
         stroke: '#000000',
         strokeThickness: 5,
       })
@@ -379,12 +372,14 @@ export default class GameScene extends Phaser.Scene {
     // Announce the countdown at a few milestones so screen-reader users
     // can follow the round without being flooded with messages. The
     // routing (which seconds are milestones, and which region announces
-    // them) lives in the pure countdownAnnouncement helper; only the
-    // 10- and 5-seconds-left warnings are time-critical enough for the
-    // assertive alert region.
-    const announcement = countdownAnnouncement(remaining);
-    if (announcement && remaining !== this.lastAnnouncedTime) {
+    // them) lives in the pure countdownAnnouncement helper, and the
+    // dedup guard (each milestone announced once, despite the update
+    // loop ticking faster than once per second) in the pure
+    // shouldAnnounceMilestone helper; only the 10- and 5-seconds-left
+    // warnings are time-critical enough for the assertive alert region.
+    if (shouldAnnounceMilestone(remaining, this.lastAnnouncedTime)) {
       this.lastAnnouncedTime = remaining;
+      const announcement = countdownAnnouncement(remaining);
       if (announcement.region === 'alert') {
         announceWarning(announcement.message);
       } else {

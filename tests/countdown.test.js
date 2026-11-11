@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { countdownAnnouncement } from '../src/game/countdown.js';
+import {
+  countdownAnnouncement,
+  shouldAnnounceMilestone,
+} from '../src/game/countdown.js';
 
 describe('countdownAnnouncement', () => {
   it('routes the halfway milestone to the status region', () => {
@@ -44,5 +47,33 @@ describe('countdownAnnouncement', () => {
   it('returns null for invalid input', () => {
     expect(countdownAnnouncement(Number.NaN)).toBeNull();
     expect(countdownAnnouncement(Number.POSITIVE_INFINITY)).toBeNull();
+  });
+});
+
+describe('shouldAnnounceMilestone', () => {
+  it('announces a milestone that was never announced', () => {
+    expect(shouldAnnounceMilestone(30, null)).toBe(true);
+    expect(shouldAnnounceMilestone(10, 30)).toBe(true);
+  });
+
+  it('announces the same milestone again after a different one', () => {
+    // 30 was announced, then 10: announcing 10 is new.
+    expect(shouldAnnounceMilestone(10, 30)).toBe(true);
+    // 10 was announced; 5 is a different milestone.
+    expect(shouldAnnounceMilestone(5, 10)).toBe(true);
+  });
+
+  it('does not re-announce the milestone that was announced last', () => {
+    // The update loop ticks faster than once per second, so the same
+    // milestone is seen on many consecutive frames.
+    expect(shouldAnnounceMilestone(30, 30)).toBe(false);
+    expect(shouldAnnounceMilestone(10, 10)).toBe(false);
+    expect(shouldAnnounceMilestone(5, 5)).toBe(false);
+  });
+
+  it('does not announce non-milestone seconds', () => {
+    expect(shouldAnnounceMilestone(29, null)).toBe(false);
+    expect(shouldAnnounceMilestone(9, 30)).toBe(false);
+    expect(shouldAnnounceMilestone(45, 10)).toBe(false);
   });
 });

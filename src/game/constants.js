@@ -22,8 +22,20 @@ export const SCENE_BOOT = 'Boot';
 export const SCENE_GAME = 'Game';
 export const SCENE_GAME_OVER = 'GameOver';
 
-// Depth layers for the overlay screens (the boot start screen and the
-// game-over screen): the dimmer rectangle sits above the background
-// image, and all text renders on top of the dimmer.
-export const DIMMER_DEPTH = 5;
-export const TEXT_DEPTH = 10;
+// Depth layers, all defined in one place with one naming scheme
+// (DEPTH_<role>) so the full layering is visible at a glance.
+//
+// Overlay screens (the boot start screen and the game-over screen):
+// the dimmer rectangle sits above the background image, and all
+// overlay text renders on top of the dimmer.
+export const DEPTH_DIMMER = 5;
+export const DEPTH_TEXT = 10;
+
+// Playfield: each row of holes gets its own block of depths so that
+// lower rows (and their covers) always draw above the rows behind
+// them. The selection highlight, HUD, and popup tiers sit above the
+// whole playfield.
+export const DEPTH_PER_ROW = 10;
+export const DEPTH_HIGHLIGHT = 30;
+export const DEPTH_HUD = 40;
+export const DEPTH_POPUP = 50;
