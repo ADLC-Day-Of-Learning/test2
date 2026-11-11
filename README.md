@@ -48,7 +48,7 @@ To run the unit tests:
 npm test
 ```
 
-### Production build
+### Production Build
 
 To build the project locally:
 
