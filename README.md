@@ -23,9 +23,7 @@ with all artwork drawn procedurally so there are no binary assets to manage.
 
 - A grid of holes in a playful carnival-style playfield
 - Moles pop up from random holes at random intervals
-- Click or tap a mole to whack it and score one point. Whacking an empty hole (or a mole still emerging) — by pointer or keyboard — shows a brief Missed marker so misses are distinguishable from unresponsive input
-- Or play with the keyboard: arrow keys move between holes, and Enter or Space whacks, starts, and restarts a round
-- Screen-reader support: game state such as the score, the selected hole, and countdown milestones is announced through live regions
+- Click or tap a mole to whack it and score points
 - A 60-second round timer — hit as many moles as you can
 - Score display and a game-over screen with your final score and best score
 - Difficulty ramps up over time: moles appear faster and stay up shorter

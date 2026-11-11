@@ -32,6 +32,21 @@ export default class GameOverScene extends Phaser.Scene {
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'background');
     createOverlayDimmer(this, 0.55);
 
+    let summary = this.createSummaryTexts(best, isNewBest);
+    this.createPlayAgainPrompt();
+
+    // The restart instruction is part of the announced summary, not
+    // only canvas text, so screen-reader users learn how to continue.
+    summary += ' Press Enter or Space to play again.';
+
+    announceStatus(summary);
+
+    // The round can be restarted with the keyboard as well as the
+    // pointer (WCAG 2.1.1), via the shared overlay confirm wiring.
+    wireConfirmControls(this, () => this.scene.start(SCENE_GAME));
+  }
+
+  createSummaryTexts(best, isNewBest) {
     const titleStyle = { fontFamily: 'Arial', fontSize: '40px', color: '#ffffff' };
     const subStyle = { fontFamily: 'Arial', fontSize: '28px', color: '#ffe066' };
 
@@ -61,6 +76,10 @@ export default class GameOverScene extends Phaser.Scene {
       summary += ' New best score!';
     }
 
+    return summary;
+  }
+
+  createPlayAgainPrompt() {
     const playAgain = this.add
       .text(GAME_WIDTH / 2, 490, 'Click, tap, or press Enter or Space to play again', {
         fontFamily: 'Arial',
@@ -70,15 +89,5 @@ export default class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(DEPTH_TEXT);
     createBlinkingPrompt(this, playAgain);
-
-    // The restart instruction is part of the announced summary, not
-    // only canvas text, so screen-reader users learn how to continue.
-    summary += ' Press Enter or Space to play again.';
-
-    announceStatus(summary);
-
-    // The round can be restarted with the keyboard as well as the
-    // pointer (WCAG 2.1.1), via the shared overlay confirm wiring.
-    wireConfirmControls(this, () => this.scene.start(SCENE_GAME));
   }
 }

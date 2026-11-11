@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   countdownAnnouncement,
-  shouldAnnounceMilestone,
+  pendingMilestoneAnnouncement,
 } from '../src/game/countdown.js';
 
 describe('countdownAnnouncement', () => {
@@ -50,13 +50,13 @@ describe('countdownAnnouncement', () => {
   });
 });
 
-describe('shouldAnnounceMilestone', () => {
+describe('pendingMilestoneAnnouncement', () => {
   it('returns the announcement for a milestone that was never announced', () => {
-    expect(shouldAnnounceMilestone(30, null)).toEqual({
+    expect(pendingMilestoneAnnouncement(30, null)).toEqual({
       region: 'status',
       message: '30 seconds remaining',
     });
-    expect(shouldAnnounceMilestone(10, 30)).toEqual({
+    expect(pendingMilestoneAnnouncement(10, 30)).toEqual({
       region: 'alert',
       message: '10 seconds remaining',
     });
@@ -64,12 +64,12 @@ describe('shouldAnnounceMilestone', () => {
 
   it('returns the announcement for a milestone announced after a different one', () => {
     // 30 was announced, then 10: announcing 10 is new.
-    expect(shouldAnnounceMilestone(10, 30)).toEqual({
+    expect(pendingMilestoneAnnouncement(10, 30)).toEqual({
       region: 'alert',
       message: '10 seconds remaining',
     });
     // 10 was announced; 5 is a different milestone.
-    expect(shouldAnnounceMilestone(5, 10)).toEqual({
+    expect(pendingMilestoneAnnouncement(5, 10)).toEqual({
       region: 'alert',
       message: '5 seconds remaining',
     });
@@ -78,14 +78,14 @@ describe('shouldAnnounceMilestone', () => {
   it('does not re-announce the milestone that was announced last', () => {
     // The update loop ticks faster than once per second, so the same
     // milestone is seen on many consecutive frames.
-    expect(shouldAnnounceMilestone(30, 30)).toBeNull();
-    expect(shouldAnnounceMilestone(10, 10)).toBeNull();
-    expect(shouldAnnounceMilestone(5, 5)).toBeNull();
+    expect(pendingMilestoneAnnouncement(30, 30)).toBeNull();
+    expect(pendingMilestoneAnnouncement(10, 10)).toBeNull();
+    expect(pendingMilestoneAnnouncement(5, 5)).toBeNull();
   });
 
   it('does not announce non-milestone seconds', () => {
-    expect(shouldAnnounceMilestone(29, null)).toBeNull();
-    expect(shouldAnnounceMilestone(9, 30)).toBeNull();
-    expect(shouldAnnounceMilestone(45, 10)).toBeNull();
+    expect(pendingMilestoneAnnouncement(29, null)).toBeNull();
+    expect(pendingMilestoneAnnouncement(9, 30)).toBeNull();
+    expect(pendingMilestoneAnnouncement(45, 10)).toBeNull();
   });
 });

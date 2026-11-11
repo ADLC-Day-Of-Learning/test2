@@ -41,10 +41,12 @@ export function countdownAnnouncement(remaining) {
  * so without the dedup guard the same milestone would be announced on
  * every frame of its second). Combining the milestone lookup and the
  * dedup guard in one helper means the announcement is computed once
- * per frame and the scene dispatches on a single result. Kept pure so
- * the guard is unit-testable.
+ * per frame and the scene dispatches on a single result. Named for the
+ * value it returns — the announcement still pending — rather than with
+ * a boolean-style `should*` predicate name. Kept pure so the guard is
+ * unit-testable.
  */
-export function shouldAnnounceMilestone(remaining, lastAnnounced) {
+export function pendingMilestoneAnnouncement(remaining, lastAnnounced) {
   const announcement = countdownAnnouncement(remaining);
   if (announcement === null || remaining === lastAnnounced) {
     return null;

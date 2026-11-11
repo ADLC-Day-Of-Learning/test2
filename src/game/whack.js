@@ -1,4 +1,4 @@
-import { MOLE_HEIGHT } from './constants.js';
+import { MOLE_WIDTH, MOLE_HEIGHT } from './constants.js';
 
 // A mole must be at least this far out of its hole for a whack to count.
 const MOLE_MIN_EMERGED = MOLE_HEIGHT * 0.5;
@@ -29,6 +29,42 @@ export function whackOutcome({ roundOver, busy, whacked, moleY, holeY }) {
     return 'miss';
   }
   return 'hit';
+}
+
+/**
+ * Classify a pointer-originated whack attempt on a hole. `localX` and
+ * `localY` are the pointer's coordinates in the mole texture's local
+ * space (0,0 = texture top-left, i.e. the mole's top-centre in world
+ * space, since the sprite's origin is 0.5, 1). Unlike a keyboard whack,
+ * which is hole-granular, a pointer whack only counts as a hit when the
+ * click actually lands on the mole's emerged region — the part above
+ * the hole's centre line, within the mole's width. A click on the hole
+ * dirt beside an emerged mole, or on the covered part of a rising mole,
+ * is a `miss` and takes the same feedback path as a keyboard miss.
+ * Kept pure so the pointer contract is unit-testable independently of
+ * Phaser.
+ */
+export function pointerWhackOutcome({
+  roundOver,
+  busy,
+  whacked,
+  moleY,
+  holeY,
+  localX,
+  localY,
+}) {
+  if (roundOver) {
+    return 'ignored';
+  }
+  const onEmergedMole =
+    localX >= 0 &&
+    localX <= MOLE_WIDTH &&
+    localY >= 0 &&
+    isPointOnEmergedMole(moleY, holeY, localY);
+  if (!onEmergedMole) {
+    return 'miss';
+  }
+  return whackOutcome({ roundOver, busy, whacked, moleY, holeY });
 }
 
 /**

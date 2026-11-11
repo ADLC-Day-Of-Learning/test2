@@ -17,8 +17,12 @@ import {
   DEPTH_POPUP,
 } from '../game/constants.js';
 import { moleUpTime, spawnInterval } from '../game/difficulty.js';
-import { whackOutcome, isPointOnEmergedMole } from '../game/whack.js';
-import { shouldAnnounceMilestone } from '../game/countdown.js';
+import {
+  whackOutcome,
+  isPointOnEmergedMole,
+  pointerWhackOutcome,
+} from '../game/whack.js';
+import { pendingMilestoneAnnouncement } from '../game/countdown.js';
 import {
   initialHoleState,
   onMoleSpawned,
@@ -135,7 +139,7 @@ export default class GameScene extends Phaser.Scene {
       .setDepth(depth + 4);
 
     const hole = { x, y, mole, state: initialHoleState() };
-    mole.on('pointerdown', () => this.whack(hole));
+    mole.on('pointerdown', (pointer) => this.whack(hole, pointer));
 
     // A pointer click on the hole itself — not only on an emerged
     // mole — is a whack attempt too, routed through the same whack()
@@ -143,14 +147,16 @@ export default class GameScene extends Phaser.Scene {
     // the mole sprite in depth, so a click on the mole's emerged
     // region still reaches the mole handler first, while a click on
     // an empty hole (or the covered part of a rising mole) falls
-    // through to the zone: pointer users get the same Missed marker
+    // through to the zone. Inside whack() the pointer's position
+    // decides the outcome: only a click on the mole's emerged region
+    // can score a hit, so pointer users get the same Missed marker
     // and announcement as keyboard users instead of no feedback at
     // all (WCAG 4.1.3, feedback consistency).
     this.add
       .zone(x, y, HOLE_WIDTH, HOLE_HEIGHT)
       .setDepth(depth + 1)
       .setInteractive()
-      .on('pointerdown', () => this.whack(hole));
+      .on('pointerdown', (pointer) => this.whack(hole, pointer));
 
     return hole;
   }
@@ -293,18 +299,33 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  whack(hole) {
+  whack(hole, pointer) {
     // The outcome decision (which rejections still count as a miss
     // versus which input is ignored entirely) lives in the pure
     // whackOutcome helper so it is unit-tested; the scene only
-    // dispatches on its result.
-    const outcome = whackOutcome({
-      roundOver: this.roundOver,
-      busy: hole.state.busy,
-      whacked: hole.state.whacked,
-      moleY: hole.mole.y,
-      holeY: hole.y,
-    });
+    // dispatches on its result. Pointer-originated whacks go through
+    // pointerWhackOutcome instead, which additionally requires the
+    // click to land on the mole's emerged region for a hit — the
+    // pointer's position is translated into the mole texture's local
+    // space (0,0 = texture top-left). Keyboard whacks (no pointer)
+    // stay hole-granular.
+    const outcome = pointer
+      ? pointerWhackOutcome({
+          roundOver: this.roundOver,
+          busy: hole.state.busy,
+          whacked: hole.state.whacked,
+          moleY: hole.mole.y,
+          holeY: hole.y,
+          localX: pointer.worldX - (hole.mole.x - MOLE_WIDTH / 2),
+          localY: pointer.worldY - (hole.mole.y - MOLE_HEIGHT),
+        })
+      : whackOutcome({
+          roundOver: this.roundOver,
+          busy: hole.state.busy,
+          whacked: hole.state.whacked,
+          moleY: hole.mole.y,
+          holeY: hole.y,
+        });
     if (outcome === 'ignored') {
       return;
     }
@@ -389,12 +410,12 @@ export default class GameScene extends Phaser.Scene {
     // can follow the round without being flooded with messages. The
     // milestone lookup and the dedup guard (each milestone announced
     // once, despite the update loop ticking faster than once per second)
-    // both live in the pure shouldAnnounceMilestone helper, which
+    // both live in the pure pendingMilestoneAnnouncement helper, which
     // returns the announcement to make — or null when there is none —
     // so the decision is evaluated exactly once per frame; only the 10-
     // and 5-seconds-left warnings are time-critical enough for the
     // assertive alert region.
-    const announcement = shouldAnnounceMilestone(
+    const announcement = pendingMilestoneAnnouncement(
       remaining,
       this.lastAnnouncedTime,
     );
