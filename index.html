@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Whack-a-mole</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #1a1a2e;
+      }
+      #game {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      canvas {
+        touch-action: none;
+      }
+      /* Visually hidden, but available to screen readers. */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div class="sr-only">
+      <p>
+        Whack-a-mole: a reflex game. Moles pop out of a grid of nine holes.
+        Whack a popped-up mole by clicking or tapping it, or move between
+        holes with the arrow keys and whack with Enter or Space. Click,
+        tap, or press Enter to start a round; when the sixty-second round
+        ends, click, tap, or press Enter to play again. Each mole you
+        whack scores one point.
+      </p>
+      <p id="game-status" role="status" aria-live="polite"></p>
+      <p id="game-alerts" role="alert"></p>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
