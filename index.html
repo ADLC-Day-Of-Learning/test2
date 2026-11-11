@@ -43,11 +43,15 @@
         Whack-a-mole: a reflex game. Moles pop out of a grid of nine holes.
         Whack a popped-up mole by clicking or tapping it, or move between
         holes with the arrow keys and whack with Enter or Space. Click,
-        tap, or press Enter to start a round; when the sixty-second round
-        ends, click, tap, or press Enter to play again. Each mole you
-        whack scores one point.
+        tap, or press Enter or Space to start a round; when the
+        sixty-second round ends, click, tap, or press Enter or Space to
+        play again. Each mole you whack scores one point.
       </p>
+      <!-- Two polite status regions: routine announcements rotate
+           between them so rapid updates do not overwrite each other
+           before screen readers finish announcing (WCAG 4.1.3). -->
       <p id="game-status" role="status" aria-live="polite"></p>
+      <p id="game-status-next" role="status" aria-live="polite"></p>
       <p id="game-alerts" role="alert"></p>
     </div>
     <script type="module" src="/src/main.js"></script>

@@ -40,28 +40,31 @@ describe('loadBestScore', () => {
 });
 
 describe('updateBestScore', () => {
-  it('stores and returns a new best score', () => {
+  it('stores a new best score and flags it', () => {
     const storage = memoryStorage();
-    expect(updateBestScore(12, storage)).toBe(12);
+    expect(updateBestScore(12, storage)).toEqual({ best: 12, isNewBest: true });
     expect(loadBestScore(storage)).toBe(12);
   });
 
-  it('keeps the previous best when the score is lower', () => {
+  it('keeps the previous best and flags no new best when the score is lower', () => {
     const storage = memoryStorage({ 'whack-a-mole.best-score': '20' });
-    expect(updateBestScore(5, storage)).toBe(20);
+    expect(updateBestScore(5, storage)).toEqual({ best: 20, isNewBest: false });
     expect(loadBestScore(storage)).toBe(20);
   });
 
-  it('updates the best score when the score is higher', () => {
+  it('updates the best score and flags it when the score is higher', () => {
     const storage = memoryStorage({ 'whack-a-mole.best-score': '20' });
-    expect(updateBestScore(21, storage)).toBe(21);
+    expect(updateBestScore(21, storage)).toEqual({ best: 21, isNewBest: true });
     expect(loadBestScore(storage)).toBe(21);
   });
 
   it('ignores invalid scores', () => {
     const storage = memoryStorage({ 'whack-a-mole.best-score': '20' });
-    expect(updateBestScore(-3, storage)).toBe(20);
-    expect(updateBestScore(Number.NaN, storage)).toBe(20);
+    expect(updateBestScore(-3, storage)).toEqual({ best: 20, isNewBest: false });
+    expect(updateBestScore(Number.NaN, storage)).toEqual({
+      best: 20,
+      isNewBest: false,
+    });
     expect(loadBestScore(storage)).toBe(20);
   });
 
@@ -70,12 +73,12 @@ describe('updateBestScore', () => {
     failing.setItem = () => {
       throw new Error('quota exceeded');
     };
-    expect(updateBestScore(10, failing)).toBe(10);
+    expect(updateBestScore(10, failing)).toEqual({ best: 10, isNewBest: true });
     expect(loadBestScore(failing)).toBe(10);
   });
 
   it('remembers the best in memory when storage is entirely unavailable', () => {
-    expect(updateBestScore(10, null)).toBe(10);
+    expect(updateBestScore(10, null)).toEqual({ best: 10, isNewBest: true });
     expect(loadBestScore(null)).toBe(10);
   });
 
@@ -84,9 +87,9 @@ describe('updateBestScore', () => {
     failing.setItem = () => {
       throw new Error('quota exceeded');
     };
-    expect(updateBestScore(7, failing)).toBe(7);
-    expect(updateBestScore(4, failing)).toBe(7);
-    expect(updateBestScore(9, failing)).toBe(9);
+    expect(updateBestScore(7, failing)).toEqual({ best: 7, isNewBest: true });
+    expect(updateBestScore(4, failing)).toEqual({ best: 7, isNewBest: false });
+    expect(updateBestScore(9, failing)).toEqual({ best: 9, isNewBest: true });
     expect(loadBestScore(failing)).toBe(9);
   });
 
@@ -95,8 +98,13 @@ describe('updateBestScore', () => {
     failing.setItem = () => {
       throw new Error('quota exceeded');
     };
-    expect(updateBestScore(6, failing)).toBe(6);
+    expect(updateBestScore(6, failing)).toEqual({ best: 6, isNewBest: true });
     const working = memoryStorage({ 'whack-a-mole.best-score': '30' });
     expect(loadBestScore(working)).toBe(30);
+  });
+
+  it('does not flag a new best when the score ties the stored best', () => {
+    const storage = memoryStorage({ 'whack-a-mole.best-score': '20' });
+    expect(updateBestScore(20, storage)).toEqual({ best: 20, isNewBest: false });
   });
 });

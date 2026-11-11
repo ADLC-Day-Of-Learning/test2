@@ -46,7 +46,7 @@ export function createBlinkingPrompt(scene, prompt) {
 
 /**
  * Wires the overlay's confirm action: pointer input anywhere on the
- * screen, or the ENTER/SPACE keys, run `confirm` exactly once. The
+ * screen, or the ENTER/SPACE keys, run `onConfirm` exactly once. The
  * keyboard handlers use `on` (not `once`) so a keypress while the
  * canvas is unfocused cannot silently consume them and leave the
  * screen un-confirmable; keyboard confirms are only honored while the
@@ -55,14 +55,14 @@ export function createBlinkingPrompt(scene, prompt) {
  * prevents pointer and keyboard input from double-confirming, and
  * scene shutdown removes the listeners.
  */
-export function wireConfirmControls(scene, confirm) {
+export function wireConfirmControls(scene, onConfirm) {
   let confirmTriggered = false;
   const triggerConfirm = () => {
     if (confirmTriggered) {
       return;
     }
     confirmTriggered = true;
-    confirm();
+    onConfirm();
   };
 
   scene.input.once('pointerdown', triggerConfirm);

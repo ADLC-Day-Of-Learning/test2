@@ -34,12 +34,20 @@ export function countdownAnnouncement(remaining) {
 }
 
 /**
- * Whether `remaining` seconds is a milestone that has not been
- * announced yet, given the second that was announced last. The
- * update loop ticks faster than once per second, so without this
- * dedup guard the same milestone would be announced on every frame
- * of its second. Kept pure so the guard is unit-testable.
+ * The announcement for `remaining` seconds when it is a milestone that
+ * has not been announced yet, given the second that was announced last,
+ * or null otherwise (either not a milestone, or the milestone that was
+ * announced last — the update loop ticks faster than once per second,
+ * so without the dedup guard the same milestone would be announced on
+ * every frame of its second). Combining the milestone lookup and the
+ * dedup guard in one helper means the announcement is computed once
+ * per frame and the scene dispatches on a single result. Kept pure so
+ * the guard is unit-testable.
  */
 export function shouldAnnounceMilestone(remaining, lastAnnounced) {
-  return countdownAnnouncement(remaining) !== null && remaining !== lastAnnounced;
+  const announcement = countdownAnnouncement(remaining);
+  if (announcement === null || remaining === lastAnnounced) {
+    return null;
+  }
+  return announcement;
 }

@@ -18,7 +18,7 @@ import {
 } from '../game/constants.js';
 import { moleUpTime, spawnInterval } from '../game/difficulty.js';
 import { whackOutcome, isPointOnEmergedMole } from '../game/whack.js';
-import { countdownAnnouncement, shouldAnnounceMilestone } from '../game/countdown.js';
+import { shouldAnnounceMilestone } from '../game/countdown.js';
 import {
   initialHoleState,
   onMoleSpawned,
@@ -136,6 +136,22 @@ export default class GameScene extends Phaser.Scene {
 
     const hole = { x, y, mole, state: initialHoleState() };
     mole.on('pointerdown', () => this.whack(hole));
+
+    // A pointer click on the hole itself — not only on an emerged
+    // mole — is a whack attempt too, routed through the same whack()
+    // and miss-feedback path as keyboard input. The zone sits below
+    // the mole sprite in depth, so a click on the mole's emerged
+    // region still reaches the mole handler first, while a click on
+    // an empty hole (or the covered part of a rising mole) falls
+    // through to the zone: pointer users get the same Missed marker
+    // and announcement as keyboard users instead of no feedback at
+    // all (WCAG 4.1.3, feedback consistency).
+    this.add
+      .zone(x, y, HOLE_WIDTH, HOLE_HEIGHT)
+      .setDepth(depth + 1)
+      .setInteractive()
+      .on('pointerdown', () => this.whack(hole));
+
     return hole;
   }
 
@@ -371,15 +387,19 @@ export default class GameScene extends Phaser.Scene {
 
     // Announce the countdown at a few milestones so screen-reader users
     // can follow the round without being flooded with messages. The
-    // routing (which seconds are milestones, and which region announces
-    // them) lives in the pure countdownAnnouncement helper, and the
-    // dedup guard (each milestone announced once, despite the update
-    // loop ticking faster than once per second) in the pure
-    // shouldAnnounceMilestone helper; only the 10- and 5-seconds-left
-    // warnings are time-critical enough for the assertive alert region.
-    if (shouldAnnounceMilestone(remaining, this.lastAnnouncedTime)) {
+    // milestone lookup and the dedup guard (each milestone announced
+    // once, despite the update loop ticking faster than once per second)
+    // both live in the pure shouldAnnounceMilestone helper, which
+    // returns the announcement to make — or null when there is none —
+    // so the decision is evaluated exactly once per frame; only the 10-
+    // and 5-seconds-left warnings are time-critical enough for the
+    // assertive alert region.
+    const announcement = shouldAnnounceMilestone(
+      remaining,
+      this.lastAnnouncedTime,
+    );
+    if (announcement) {
       this.lastAnnouncedTime = remaining;
-      const announcement = countdownAnnouncement(remaining);
       if (announcement.region === 'alert') {
         announceWarning(announcement.message);
       } else {

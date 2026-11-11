@@ -6,7 +6,7 @@ import {
   SCENE_GAME_OVER,
   DEPTH_TEXT,
 } from '../game/constants.js';
-import { loadBestScore, updateBestScore } from '../game/bestScore.js';
+import { updateBestScore } from '../game/bestScore.js';
 import { announceStatus } from '../game/a11y.js';
 import {
   createOverlayDimmer,
@@ -24,9 +24,10 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   create() {
-    const previousBest = loadBestScore();
-    const best = updateBestScore(this.finalScore);
-    const isNewBest = best > previousBest;
+    // The new-best decision is made once by the bestScore helper —
+    // like every other round outcome, the scene only dispatches on
+    // the helper's result instead of re-deriving it.
+    const { best, isNewBest } = updateBestScore(this.finalScore);
 
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'background');
     createOverlayDimmer(this, 0.55);

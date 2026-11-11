@@ -6,6 +6,7 @@ import {
   isGameFocused,
   makeCanvasFocusable,
   onGameFocusChange,
+  resetStatusRotation,
 } from '../src/game/a11y.js';
 
 // The a11y module keeps its focus state at module scope and only exposes
@@ -22,7 +23,9 @@ function freshCanvas() {
 beforeEach(() => {
   document.body.innerHTML =
     '<p id="game-status" role="status" aria-live="polite"></p>' +
+    '<p id="game-status-next" role="status" aria-live="polite"></p>' +
     '<p id="game-alerts" role="alert"></p>';
+  resetStatusRotation();
 });
 
 describe('live region routing', () => {
@@ -38,6 +41,26 @@ describe('live region routing', () => {
       '10 seconds remaining',
     );
     expect(document.getElementById('game-status').textContent).toBe('');
+  });
+
+  it('consecutive status messages rotate regions instead of overwriting', () => {
+    // During fast play, score, selection, and miss feedback arrive in
+    // quick succession; rotating between the two polite regions keeps
+    // the previous message intact until the announcement after next
+    // (WCAG 4.1.3).
+    announceStatus('Score: 1');
+    announceStatus('Hole 2-1 selected');
+    const messages = [
+      document.getElementById('game-status').textContent,
+      document.getElementById('game-status-next').textContent,
+    ].sort();
+    expect(messages).toEqual(['Hole 2-1 selected', 'Score: 1']);
+  });
+
+  it('a status message never lands in the assertive alert region', () => {
+    announceStatus('Missed');
+    announceStatus('Score: 2');
+    expect(document.getElementById('game-alerts').textContent).toBe('');
   });
 });
 

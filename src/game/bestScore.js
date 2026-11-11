@@ -35,12 +35,14 @@ export function loadBestScore(storage = defaultStorage()) {
 
 /**
  * Persist `score` as the new best score if it beats the stored one.
- * Returns the best score after the update.
+ * Returns the best score after the update together with whether `score`
+ * set a new best, so callers dispatch on this single result instead of
+ * re-deriving the comparison against a separately loaded best.
  */
 export function updateBestScore(score, storage = defaultStorage()) {
   const current = loadBestScore(storage);
   if (!Number.isFinite(score) || score < 0 || score <= current) {
-    return current;
+    return { best: current, isNewBest: false };
   }
   try {
     // No optional chaining here on purpose: when storage is entirely
@@ -52,5 +54,5 @@ export function updateBestScore(score, storage = defaultStorage()) {
     // memory so it survives this session instead of silently reverting.
     sessionBest = Math.max(sessionBest ?? 0, score);
   }
-  return score;
+  return { best: score, isNewBest: true };
 }
